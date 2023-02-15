@@ -1,0 +1,88 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Provides nesting for required stacks to deploy a reference SFTP architecure.
+Metadata:
+  Stack:
+    Value: 0
+  VersionDate:
+    Value: 20220830
+  Identifier:
+    Value: main
+  Input:
+    Description: Input of all required parameters in nested stacks
+  Output:
+    Description: N/A
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: 'VPC Configuration'
+        Parameters:
+          - VPCTenancy
+          - AvailabilityZoneA
+          - AvailabilityZoneB
+    ParameterLabels:
+      AvailabilityZoneA:
+        default: First Availability Zone
+      AvailabilityZoneB:
+        default: Second Availability zone
+      VPCTenancy:
+        default: Instance tenancy
+Parameters:
+  AvailabilityZoneA:
+    Description: The name of Availability Zone 1.
+    Type: AWS::EC2::AvailabilityZone::Name
+  AvailabilityZoneB:
+    Description: The name of Availability Zone 2. This must be different from the name of the first Availability Zone.
+    Type: AWS::EC2::AvailabilityZone::Name
+  VPCTenancy:
+    Description: The tenancy attribute for the instances launched into the VPC. If unsure, leave as default.
+    Type: String
+    Default: default
+    AllowedValues:
+      - default
+Mappings:
+  CustomVariables:
+    vResourceEnvironmentTagKey:
+      Value: Environment
+    vResourceEnvironmentTagValue:
+      Value: SFTP
+Resources:
+  #Template to build VPC to be used for SFTP service
+  ProductionVpcTemplate:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://sftp-pci.s3.amazonaws.com/vpc-production.template.yaml
+      TimeoutInMinutes: 20
+      Parameters:
+        #Customer need to update CIDR as needed
+        pRegionAZ1Name: !Ref AvailabilityZoneA
+        pRegionAZ2Name: !Ref AvailabilityZoneB
+        pProductionVPCName: Production VPC
+        pDMZSubnetACIDR: 10.100.10.0/24
+        pDMZSubnetBCIDR: 10.100.20.0/24
+        pAppPrivateSubnetACIDR: 10.100.96.0/21
+        pAppPrivateSubnetBCIDR: 10.100.119.0/21
+        pVPCTenancy: !Ref VPCTenancy
+  #Template to build SFTP server using AWS Transfer Family service
+  TransferTemplate:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: ProductionVpcTemplate
+    Properties:
+      TemplateURL: https://sftp-pci.s3.amazonaws.com/transfer.template.yaml
+      TimeoutInMinutes: 20
+      Parameters:
+        VPCProduction: !GetAtt ProductionVpcTemplate.Outputs.rVPCProduction
+        DMZSubnetA: !GetAtt ProductionVpcTemplate.Outputs.rDMZSubnetA
+        DMZSubnetB: !GetAtt ProductionVpcTemplate.Outputs.rDMZSubnetB
+  #Template to create users to be authenticated to SFTP server
+  UsersTemplate:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://sftp-pci.s3.amazonaws.com/users.template.yaml
+      TimeoutInMinutes: 20
+Outputs:
+  TemplateType:
+    Value: Reference SFTP Architecture
+  TemplateVersion:
+    Value: 1.0
+...
