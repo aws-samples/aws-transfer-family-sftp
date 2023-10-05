@@ -42,7 +42,6 @@ During deploy:
 * Launch the main.template.yaml template, which will launch all nested additional templates.
 
 After deploy: 
-* Assign the new created security group to VPC Endpoint created by AWS Transfer for SFTP service
 * Test you sftp connection using demo user. You can see password in the secret created in AWS Secrets Manager with the format SFTP/usecret.
 
 ## Contributing
