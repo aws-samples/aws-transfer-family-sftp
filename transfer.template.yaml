@@ -55,6 +55,8 @@ Resources:
         AddressAllocationIds:
           - !GetAtt EIPTran01.AllocationId
           - !GetAtt EIPTran02.AllocationId
+        SecurityGroupIds:
+          - !Ref TrSecurityGroup
         SubnetIds:
           - !Ref DMZSubnetA
           - !Ref DMZSubnetB
